@@ -3,6 +3,8 @@ package com.vilaka.crudclient.service;
 import com.vilaka.crudclient.dto.ClientDTO;
 import com.vilaka.crudclient.entities.Client;
 import com.vilaka.crudclient.repository.ClientRepository;
+import com.vilaka.crudclient.service.exceptions.ResourceNotFoundException;
+import jakarta.persistence.EntityNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -17,7 +19,9 @@ public class ClientService {
 
     @Transactional(readOnly = true)
     public ClientDTO findById(Long id){
-        Client client = repository.findById(id).get();
+        Client client = repository.findById(id).orElseThrow(
+                () -> new ResourceNotFoundException("Recurso não encontrado!")
+        );
         return new ClientDTO(client);
     }
 
@@ -37,15 +41,26 @@ public class ClientService {
 
     @Transactional
     public ClientDTO update(Long id, ClientDTO dto){
-       Client entity = repository.getReferenceById(id);
-       copyDtoToEntity(dto, entity);
-       entity = repository.save(entity);
-       return new ClientDTO(entity);
+        try{
+            Client entity = repository.getReferenceById(id);
+            copyDtoToEntity(dto, entity);
+            entity = repository.save(entity);
+            return new ClientDTO(entity);
+        }
+       catch (EntityNotFoundException e){
+            throw new ResourceNotFoundException("Recurso não encontrado!");
+       }
     }
 
     @Transactional
     public void delete(Long id){
-        repository.deleteById(id);
+        if (repository.existsById(id)){
+            repository.deleteById(id);
+        }
+        else {
+            throw new ResourceNotFoundException("Recurso não encontrado!");
+        }
+
     }
 
     private void copyDtoToEntity(ClientDTO dto, Client entity) {
